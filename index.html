@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title></title>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+  </head>
+
+  <body>
+    <h1>Gradient Domain Fusion</h1>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+
+    <h2> Implementation </h2>
+    <div>
+
+        <h3> Overview </h3>
+        <p>
+        I use gradient domain processing to seamlessly clone a source image into a target image. 
+        Whereas a naive blend results in harsh edges, poisson blending creates smooth edges by enforcing gradient consistency. 
+
+        </p>
+        <h3> Solving Least Squares for Blending </h3>
+        <p>
+
+        For Poisson blending, we solve the blending constraints in a least squares manner,
+        solving for vector v of dimensions (hw * 1) that satisfies Av = b.
+
+        A is a coefficient matrix of size (e * hw), where e is the number of equations/constraints. 
+        b is a known vector of size (e * 1). 
+        
+        Our goal is to create an image v which enforces gradient consistencies. 
+        For each pixel i = (y,x) in our cropped source region (which we denote S), we define its four 
+        neighbors j = (y,x-1), (y,x+1), (y+1,x), (y-1,x). If j is in S, we enforce the 
+        consistency of gradient v with the source image. If j is not in S, then we require
+        that vi matches the target.
+
+        These computations are performed three times, once per channel (R, G, B). 
+
+        <hr>
+
+        <img src="images/blending_constraint.png" class="img-rounded" width="800">
+
+        <hr>
+        For computational efficiency, I use a sparse matrix A and call 
+        scipy.sparse.linalg.lsqr(A, b) to obtain my solution v. If the input images
+        were too large, I had to decrease the "ratio" parameter in main.py 
+        to scale down the images. 
+        </p>
+
+        <h3> Mixed Blending </h3>
+        <p>
+
+            
+        I also add a mixed blending method which uses the larger magnitude gradient
+        (between the source and target) as guidance. 
+
+        <hr>
+        <img src="images/mixed_constraint.png" class="img-rounded" width="800">
+
+        <hr>
+        The following shows an output of mixed blending: 
+        <img src="outputs/mixed_vivian_sky.png" class="img-rounded" width="1000">
+
+
+        </p>
+
+
+    </div>
+
+
+    <h2> Example Outputs (Poisson Blending): </h2>
+
+    Source: <br>
+
+    <img src="data/penguin.jpeg" class="img-rounded" width="300"> <br>
+
+    Target:<br>
+
+    <img src="data/chick.jpeg" class="img-rounded" width="300"> <br>
+
+
+    Naive vs Poisson Blending Result: <br>
+
+    <img src="outputs/penguin_chick.png" class="img-rounded" width="1000"> <br>
+
+    <h2> Example Outputs (on Mixed Blending) </h2>
+    <img src="outputs/mixed_vivian_sky.png" class="img-rounded" width="1000">
+
+    <h2> Other Outputs: Poisson Blending </h2>
+
+    My guinea pig Squeakers :) 
+    <img src="outputs/squeakers_night.png" class="img-rounded" width="1000"> <br>
+
+
+    The below output does not look quite natural. Despite smoothed edges due to
+    Poisson blending, there is still a visible seam which may be due to initial jagged
+    cropping when creating the mask. Also, the initial mask cropping included backgrounds
+    with multiple colors. Thus, increasing the intensity and widening the spread of 
+    blending would be beneficial. 
+    <img src="outputs/guineapig_meadow.png" class="img-rounded" width="800"> <br>
+
+
+
+
+  </body>
+
+
+
+</html>

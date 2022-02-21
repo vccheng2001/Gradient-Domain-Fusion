@@ -62,7 +62,7 @@ def toy_recon(im):
 
     # solve least squares 
     A = csc_matrix(A)
-    v = scipy.sparse.linalg.lsqr(A, b, show=True)[0]
+    v = scipy.sparse.linalg.lsqr(A, b, show=False)[0]
     
     # reshape to im size 
     v = v.reshape((im_h, im_w))
@@ -249,7 +249,7 @@ if __name__ == '__main__':
         args = parser.parse_args()
 
         # after alignment (masking_code.py)
-        ratio = 0.25
+        ratio = 0.15
         fg = cv2.resize(imageio.imread(args.source), (0, 0), fx=ratio, fy=ratio)
         bg = cv2.resize(imageio.imread(args.target), (0, 0), fx=ratio, fy=ratio)
         mask = cv2.resize(imageio.imread(args.mask), (0, 0), fx=ratio, fy=ratio)

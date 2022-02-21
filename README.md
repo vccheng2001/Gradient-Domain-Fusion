@@ -92,10 +92,13 @@ Given a source and target image, ```mask.py``` allows you to select a region of 
 ---
 
 Once you have your generated masks, 
-
+```bash
+# To run the toy problem (image reconstruction)
+python main.py -q toy
+```
 
 ```bash
-# Poisson blending
+# To run Poisson blending
 # Specify source, target, mask files and run in "blend" mode
 python main.py -q blend  \
 -s data/{source_name}_newsource.png \
@@ -122,5 +125,5 @@ To run mixed blending, specify ``` -q mixed ```. To run simple reconstruction of
 
 without worrying about memory consumption problems. 
 
-- You can also downscale the input images to increase computational speed. 
+- You can also downscale the input (decrease ```ratio``` in ```main.py```) images to increase computational speed. 
 
