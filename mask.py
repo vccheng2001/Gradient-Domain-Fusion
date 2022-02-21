@@ -228,6 +228,6 @@ def save_masks(im1name, im2name):
     return source_mask, target_mask, source_im
 
 # Example usage
-imname = "./data/guineapig.png"
-im2name = "./data/meadow.jpeg"
+imname = "./data/penguin.jpeg"
+im2name = "./data/chick.jpeg"
 save_masks(imname, im2name)

@@ -200,7 +200,7 @@ if __name__ == '__main__':
         args = parser.parse_args()
 
         # after alignment (masking_code.py)
-        ratio = 0.5
+        ratio = 0.15
         fg = cv2.resize(imageio.imread(args.source), (0, 0), fx=ratio, fy=ratio)
         bg = cv2.resize(imageio.imread(args.target), (0, 0), fx=ratio, fy=ratio)
         mask = cv2.resize(imageio.imread(args.mask), (0, 0), fx=ratio, fy=ratio)
