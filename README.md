@@ -14,10 +14,9 @@
  We use gradient domain processing to seamlessly clone a source image into a target image. 
 
 
- <img src="outputs/bear_pool.png" /> 
- <img src="outputs/guineapig_meadow.png" /> 
-
-
+  <img src="outputs/bear_pool.png" width="300" />
+  <img src="outputs/penguin_chick.png" width="300" /> 
+ 
 Whereas a naive blend results in harsh edges, poisson blending creates smooth edges by enforcing gradient consistency. 
 
 
