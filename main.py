@@ -154,14 +154,63 @@ def poisson_blend(fg, mask, bg):
     # wherever mask white, copy all_v pixels to bg
     bg[np.where(mask == 255)] = all_v[np.where(mask == 255)]
 
-    cv2.imshow('OUT', bg)
-    cv2.waitKey(0)
     return bg   
 
 
 def mixed_blend(fg, mask, bg):
     """EC: Mix gradient of source and target"""
-    return fg * mask + bg * (1 - mask)
+    # NOTE: np.resize crops, cv2.resize scales!
+    im_h, im_w, im_c = fg.shape
+    print('hwc', im_h, im_w, im_c)
+
+    all_v = np.zeros((im_h, im_w, im_c))
+    for ch in range(3):
+        num_eq = 4 * im_h * im_w  
+        b = np.zeros((num_eq, 1))
+        A = np.zeros((num_eq, im_h * im_w))
+        pix2ind = np.arange(im_h * im_w).reshape((im_h, im_w)).astype(int)
+        eq = 0
+        # FG: SOURCE
+        # BG: TARGET 
+        # for each pixel, 4 neighbors. so # eq: im_h * im_w * 4
+        for y in range(1, im_h-1): # pixel i
+            for x in range(1, im_w-1): 
+                if mask[y, x, 0]: # if i in S
+                    for nbor in [[1,0],[-1,0],[0,1],[0,-1]]: # 4 neighbors 
+                        nb_y, nb_x = y+nbor[0], x+nbor[1] # neighbor j 
+                        if mask[nb_y, nb_x, 0]: # if j in S:
+                            # vi - vj = si - sj
+                            A[eq, pix2ind[y, x]] = 1
+                            A[eq, pix2ind[nb_y, nb_x]] = -1
+
+                            # Mixed blending: use larger magnitude gradient as guide 
+                            srcij = fg[y, x, ch] - fg[nb_y, nb_x, ch]
+                            tgtij = bg[y, x, ch] - bg[nb_y, nb_x, ch]
+                            if abs(srcij) >= abs(tgtij):
+                                diff = srcij
+                            else:
+                                diff = tgtij 
+
+                            b[eq] = diff
+                        else: # second half of equation
+                            # if j outside S, then equal to tj
+                            # vi - tj = si - sj
+                            A[eq, pix2ind[y, x]] = 1
+                            b[eq] = bg[nb_y, nb_x, ch]
+
+                        eq += 1 # next equation 
+
+        # solve least squares 
+        print('MIXED blending: solving least squares for ch', ch)
+        A = csc_matrix(A)
+        v = scipy.sparse.linalg.lsqr(A, b, show=False)[0]
+        # reshape to im size 
+        v = v.reshape((im_h, im_w))
+        all_v[:, :, ch] = v
+
+    # wherever mask white, copy all_v pixels to bg
+    bg[np.where(mask == 255)] = all_v[np.where(mask == 255)]
+    return bg
 
 
 def color2gray(rgb_image):
@@ -200,7 +249,7 @@ if __name__ == '__main__':
         args = parser.parse_args()
 
         # after alignment (masking_code.py)
-        ratio = 0.15
+        ratio = 0.25
         fg = cv2.resize(imageio.imread(args.source), (0, 0), fx=ratio, fy=ratio)
         bg = cv2.resize(imageio.imread(args.target), (0, 0), fx=ratio, fy=ratio)
         mask = cv2.resize(imageio.imread(args.mask), (0, 0), fx=ratio, fy=ratio)
@@ -231,16 +280,16 @@ if __name__ == '__main__':
         args = parser.parse_args()
 
         # after alignment (masking_code.py)
-        ratio = 1
+        ratio = 0.10
         fg = cv2.resize(imageio.imread(args.source), (0, 0), fx=ratio, fy=ratio)
         bg = cv2.resize(imageio.imread(args.target), (0, 0), fx=ratio, fy=ratio)
         mask = cv2.resize(imageio.imread(args.mask), (0, 0), fx=ratio, fy=ratio)
 
         fg = fg / 255.
         bg = bg / 255.
+        blend_img = mixed_blend(fg, mask, bg)
         mask = (mask.sum(axis=2, keepdims=True) > 0)
 
-        blend_img = mixed_blend(fg, mask, bg)
 
         plt.subplot(121)
         plt.imshow(fg * mask + bg * (1 - mask))
@@ -248,6 +297,7 @@ if __name__ == '__main__':
         plt.subplot(122)
         plt.imshow(blend_img)
         plt.title('Mixed Blend')
+        plt.savefig('mixed_output.png')
         plt.show()
 
     if args.question == "color2gray":

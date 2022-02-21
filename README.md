@@ -34,6 +34,17 @@ If neighbor $j$ is outside the $S$, $v_j$ is equal to target image pixel $t_j$.
  <img src="images/blending_constraint.png" /> 
 
 
+For Mixed blending, we check whether the gradient in the source or target has the larger magnitude, using it as the guide:
+
+ <img src="images/mixed_constraint.png" /> 
+
+```python
+if abs(s_i - s_j) >= abs (t_i - t_j):
+    d_ij = s_i - s_j
+else:
+    d_ij = t_i - t_j
+```
+
 
 ## **File Hierarchy**
 ```bash
@@ -82,6 +93,7 @@ Given a source and target image, ```mask.py``` allows you to select a region of 
 
 Once you have your generated masks, 
 
+
 ```bash
 # Poisson blending
 # Specify source, target, mask files and run in "blend" mode
@@ -100,6 +112,8 @@ python main.py -q blend  \
 -t data/chick.jpeg   \
 -m data/chick_mask.png \
 ```
+
+To run mixed blending, specify ``` -q mixed ```. To run simple reconstruction of the input image, use ``` -q toy ```. 
 ## **FAQ**
 ---
 - Make sure to represent coefficient matrix $A$ as a sparse matrix (csc_matrix). This way, you can use 
