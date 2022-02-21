@@ -9,10 +9,64 @@ import numpy as np
 import cv2
 import imageio
 import matplotlib.pyplot as plt
+import scipy
+from scipy.sparse import csc_matrix
+from scipy.sparse.linalg import lsqr
+
+def toy_recon(im):
+    im_h, im_w = im.shape
+
+    num_eq = 2 * im_h * im_w + 1 # three equations to minimize 
+
+    # known vector 
+    b = np.zeros((num_eq, 1))
+    # coefficient matrix 
+    A = np.zeros((num_eq, im_h * im_w))
+
+    # number at location (y, x) stores index (y*width + x)
+    pix2ind = np.arange(im_h * im_w).reshape((im_h, im_w)).astype(int)
+
+    # A: (e by (im_h*im_w)) sparse matrix (for each eq, each pixel is 1 or 0)
+    # v: ((im_h*im_w) * 1)
+    # b: (e * 1)
+    eq = 0
+
+    # Gradient in x
+    for y in range(im_h):
+        for x in range(im_w - 1): # minus one since we access x+1
+            # first equation: x gradient  
+            # v01 - v00 = s01 - s00
+            A[eq, pix2ind[y,x+1]] = 1 # v01
+            A[eq, pix2ind[y,x]] = -1 # -v00 
+
+            b[eq] = im[y, x + 1] - im[y, x] # s01 - s00
+
+            eq += 1
+
+    # Gradient in y
+    for x in range(im_w):
+        for y in range(im_h - 1): # minus one since we access y + 1
+            # v10 - v00 = s10 - s00
+            A[eq, pix2ind[y+1,x]] = 1 # v10
+            A[eq, pix2ind[y, x]] = -1 # v00
+
+            b[eq] = im[y + 1, x] - im[y, x] # s10 - s00
+            eq += 1
 
 
-def toy_recon(image):
-    return np.zeros_like(image)
+    # Finally, constrain top left corner pixel intensity 
+    # 1*v00 = s00
+    A[eq, pix2ind[0, 0]] = 1 
+    b[eq] = im[0,0]
+
+    # solve least squares 
+    A = csc_matrix(A)
+    v = scipy.sparse.linalg.lsqr(A, b, show=True)[0]
+    
+    # reshape to im size 
+    v = v.reshape((im_h, im_w))
+
+    return v
 
 
 def poisson_blend(fg, mask, bg):
