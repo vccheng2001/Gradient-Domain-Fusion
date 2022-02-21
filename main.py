@@ -5,6 +5,7 @@
 from __future__ import print_function
 
 import argparse
+from tkinter import image_types
 import numpy as np
 import cv2
 import imageio
@@ -16,7 +17,7 @@ from scipy.sparse.linalg import lsqr
 def toy_recon(im):
     im_h, im_w = im.shape
 
-    num_eq = 2 * im_h * im_w + 1 # three equations to minimize 
+    num_eq = 2 * im_h * im_w + 1 
 
     # known vector 
     b = np.zeros((num_eq, 1))
@@ -69,15 +70,122 @@ def toy_recon(im):
     return v
 
 
+'''
+python main.py -q blend \
+ -s data/guineapig_newsource.png \ 
+ -t data/meadow.jpeg \
+ -m data/meadow_mask.png
+'''
 def poisson_blend(fg, mask, bg):
     """
     Poisson Blending.
     :param fg: (H, W, C) source texture / foreground object
-    :param mask: (H, W, 1)
+    :param mask: (H, W, 1) black/white mask, obj is white
     :param bg: (H, W, C) target image / background
     :return: (H, W, C)
     """
-    return fg * mask + bg * (1 - mask)
+
+    im_h, im_w, im_c = fg.shape
+
+    downscale_factor = 2
+    fg = cv2.resize(fg,(im_w//downscale_factor, im_h//downscale_factor))
+    bg = cv2.resize(bg,(im_w//downscale_factor, im_h//downscale_factor))
+    mask = cv2.resize(mask,(im_w//downscale_factor, im_h//downscale_factor))
+
+    # NOTE: np.resize crops, cv2.resize scales!
+    im_h, im_w, im_c = fg.shape
+    print('hwc', im_h, im_w, im_c)
+
+    # mask = np.asarray(mask, dtype="uint8")
+    cv2.imshow('mask', mask)
+    cv2.waitKey(0)
+
+    cv2.imshow('bg', bg)
+    cv2.waitKey(0)
+
+    cv2.imshow('fg', fg)
+    cv2.waitKey(0)
+
+
+
+    all_v = np.zeros((im_h, im_w, im_c))
+    for ch in range(3):
+
+        num_eq = 4 * im_h * im_w  
+
+        # known vector 
+        b = np.zeros((num_eq, 1))
+        # coefficient matrix 
+        # A = scipy.sparse.csr_matrix((num_eq, im_h * im_w))
+        A = np.zeros((num_eq, im_h * im_w))
+
+
+        # fg: guineapig_newsource
+        # mask: meadow_mask
+        # bg: meadow
+
+
+        # find v that satisfies blending constraints 
+        # S: where mask != 0
+        
+        # number at location (y, x) stores index (y*width + x)
+        pix2ind = np.arange(im_h * im_w).reshape((im_h, im_w)).astype(int)
+
+        # A: (e by (im_h*im_w)) sparse matrix (for each eq, each pixel is 1 or 0)
+        # v: ((im_h*im_w) * 1)
+        # b: (e * 1)
+        eq = 0
+
+        # FG: SOURCE
+        # BG: TARGET 
+
+        # Gradient in x
+        # start at (1,1) 
+
+        # for each pixel, 4 neighbors. so # eq: im_h * im_w * 4
+        for y in range(1, im_h-1): # pixel i
+            for x in range(1, im_w-1): 
+                if mask[y, x, 0]: # if i in S
+
+                    for nbor in [[1,0],[-1,0],[0,1],[0,-1]]: # 4 neighbors 
+                        nb_y, nb_x = y+nbor[0], x+nbor[1] # neighbor j 
+
+                        if mask[nb_y, nb_x, 0]: # if j in S:
+
+                            # 1*vi + (-1)*vj 
+                            A[eq, pix2ind[y, x]] = 1
+                            A[eq, pix2ind[nb_y, nb_x]] = -1
+
+                            b[eq] = fg[y, x, ch] - fg[nb_y, nb_x, ch]
+
+                        else: # second half of equation
+                            # if j outside S, then equal to tj
+                            # 1 * vi  = tj
+                            A[eq, pix2ind[nb_y, nb_x]] = 1
+
+                            b[eq] = bg[nb_y, nb_x, ch]
+
+                        eq += 1 # next equation 
+
+        # solve least squares 
+        print('solving least squares for ch', ch)
+        A = csc_matrix(A)
+        v = scipy.sparse.linalg.lsqr(A, b, show=True)[0]
+        print('done solving least squares')
+        # reshape to im size 
+        v = v.reshape((im_h, im_w))
+        all_v[:, :, ch] = v
+
+    # wherever mask white, copy all_v pixels to bg
+    bg[np.where(mask == 255)] = all_v[np.where(mask == 255)]
+    cv2.imshow('bg', bg)
+    cv2.waitKey(0)
+    
+    cv2.imshow('all v', all_v)
+    cv2.waitKey(0)
+    cv2.imshow('bg', bg)
+    cv2.waitKey(0)
+    return bg
 
 
 def mixed_blend(fg, mask, bg):
@@ -128,8 +236,10 @@ if __name__ == '__main__':
 
         fg = fg / 255.
         bg = bg / 255.
-        mask = (mask.sum(axis=2, keepdims=True) > 0)
-
+       
+        # mask = (mask.sum(axis=2, keepdims=True) > 0)
+        cv2.imshow('mask', mask)
+        cv2.waitKey(0)
         blend_img = poisson_blend(fg, mask, bg)
 
         plt.subplot(121)

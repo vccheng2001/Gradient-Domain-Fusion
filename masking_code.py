@@ -187,7 +187,7 @@ def paste_mask(im2name, masks_to_ret, im2=None):
         cv2.imshow('image',img)
         pressed_key = cv2.waitKey(20) & 0xFF
 
-        if pressed_key == 27:
+        if pressed_key == 27: # ESC
             break 
         if pressed_key == ord('r'):
             img = np.array(orig_img)
@@ -228,6 +228,6 @@ def save_masks(im1name, im2name):
     return source_mask, target_mask, source_im
 
 # Example usage
-imname = "./data/source_01.jpg"
-im2name = "./data/target_01.jpg"
+imname = "./data/guineapig.png"
+im2name = "./data/meadow.jpeg"
 save_masks(imname, im2name)
