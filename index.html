@@ -13,6 +13,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
 
+    
     <h2> Implementation </h2>
     <div>
 
@@ -22,8 +23,34 @@
         Whereas a naive blend results in harsh edges, poisson blending creates smooth edges by enforcing gradient consistency. 
 
         </p>
+        <h3> Toy Reconstruction </h3>
+        <p>
+          
+          <hr>
+
+        For the toy reconstruction, I constrain:
+         
+        1) x gradients  (h*w equations)
+        2) y gradients  (h*w equations)
+        3) intensities of top left corner pixel (1 equation)
+
+        I construct a coefficient matrix A. Thus, if there are h*w pixels,
+        there are 2*(h*w) + 1 total rows in A. 
+
+        Then, I traverse through each pixel in the original image,
+        calculating its x, y gradients with the adjacent pixel, and 
+        make sure v(x+1, y) - v(x, y) = s(x+1, y) - s(x, y) [and vice
+        versa for the y direction] etc... for my new vector v. 
+        Finally, I constrain v(0,0) = s(0,0), and reshape v to be shape (h * w).
+        <hr>
+
+
+        <img src="outputs/toy.png" class="img-rounded" width="800">
+
+        </p>
         <h3> Solving Least Squares for Blending </h3>
         <p>
+          <hr>
 
         For Poisson blending, we solve the blending constraints in a least squares manner,
         solving for vector v of dimensions (hw * 1) that satisfies Av = b.
